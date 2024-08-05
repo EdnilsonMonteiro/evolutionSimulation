@@ -4,20 +4,23 @@ import os
 import random
 import time
 
-# Função de reprodução
-def reproduce(population, mutation_rate):
+# Função de reprodução com seleção natural
+def reproduce(population, mutation_rate, selection_pressure):
     next_generation = []
+    fitness = np.where(population == 1, 1 + selection_pressure, 1 - selection_pressure)
+    probabilities = fitness / fitness.sum()
     for _ in range(len(population) // 2):
-        parent1, parent2 = np.random.choice(population, 2, replace=False)
+        parent1 = np.random.choice(population, p=probabilities)
+        parent2 = np.random.choice(population, p=probabilities)
         child1 = parent1 if np.random.random() > mutation_rate else 1 - parent1
         child2 = parent2 if np.random.random() > mutation_rate else 1 - parent2
         next_generation.extend([child1, child2])
     return np.array(next_generation)
 
 # Função para executar uma simulação
-def run_simulation(simulation_id, num_individuals, num_generations, mutation_rate, list_id):
+def run_simulation(simulation_id, num_individuals, num_generations, mutation_rate, selection_pressure, list_id):
     population = np.zeros(num_individuals)
-    data = {'list_id': [], 'simulation_id': [], 'generation': [], 'frequency_of_mutants': [], 'num_individuals': [], 'num_generations': [], 'mutation_rate': []}
+    data = {'list_id': [], 'simulation_id': [], 'generation': [], 'frequency_of_mutants': [], 'num_individuals': [], 'num_generations': [], 'mutation_rate': [], 'selection_pressure': []}
     for generation in range(num_generations):
         frequency_of_mutants = np.mean(population)
         data['list_id'].append(list_id)
@@ -27,7 +30,8 @@ def run_simulation(simulation_id, num_individuals, num_generations, mutation_rat
         data['num_individuals'].append(num_individuals)
         data['num_generations'].append(num_generations)
         data['mutation_rate'].append(mutation_rate)
-        population = reproduce(population, mutation_rate)
+        data['selection_pressure'].append(selection_pressure)
+        population = reproduce(population, mutation_rate, selection_pressure)
     return pd.DataFrame(data)
 
 # Parâmetros para simulações aleatórias
@@ -35,7 +39,8 @@ def generate_parameters():
     num_individuals = 2000
     num_generations = 300
     mutation_rate = random.uniform(0.2, 0.3)
-    return num_individuals, num_generations, mutation_rate
+    selection_pressure = random.uniform(-0.1, 0.1)  # Seleção natural variando entre -0.1 e 0.1
+    return num_individuals, num_generations, mutation_rate, selection_pressure
 
 # Verificar se o arquivo CSV já existe e determinar o próximo simulation_id
 filename_all = 'todas_simulacoes_evolucao.csv'
@@ -60,14 +65,14 @@ current_list_id = last_list_id + 1
 # Executar simulações e armazenar resultados
 df_all_simulations = pd.DataFrame()
 df_current_list_simulations = pd.DataFrame()
-num_simulations = 20
+num_simulations = 5
 
 start_time = time.time()
 
 for i in range(num_simulations):
     simulation_id = last_simulation_id + i + 1
-    num_individuals, num_generations, mutation_rate = generate_parameters()
-    df_simulation = run_simulation(simulation_id, num_individuals, num_generations, mutation_rate, current_list_id)
+    num_individuals, num_generations, mutation_rate, selection_pressure = generate_parameters()
+    df_simulation = run_simulation(simulation_id, num_individuals, num_generations, mutation_rate, selection_pressure, current_list_id)
     df_all_simulations = pd.concat([df_all_simulations, df_simulation], ignore_index=True)
     df_current_list_simulations = pd.concat([df_current_list_simulations, df_simulation], ignore_index=True)
 
